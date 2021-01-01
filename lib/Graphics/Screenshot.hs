@@ -1,0 +1,2 @@
+module Graphics.Screenshot where
+--
