@@ -1,10 +1,10 @@
 #include <windows.h>
 
 typedef struct
-  { long sx;
-    long sy;
-    long sw;
-    long sh;
+  { long x;
+    long y;
+    long w;
+    long h;
   } Screen;
 
 typedef struct
@@ -14,4 +14,5 @@ typedef struct
 
 ScreenList* ListScreens();
 
-BOOL ScreenCounter( HMONITOR hMonitor, HDC hDC, LPRECT pRect, LPARAM pCnt );
+BOOL ScreenCounter( HMONITOR hMonitor , HDC hDC , LPRECT pRect , LPARAM aSize );
+BOOL ScreenFetcher( HMONITOR hMonitor , HDC hDC , LPRECT pRect , LPARAM aScreenList );
