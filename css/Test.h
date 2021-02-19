@@ -1,18 +1,24 @@
 #include <windows.h>
 
-typedef struct
-  { long x;
-    long y;
-    long w;
-    long h;
-  } Screen;
+struct Bitmap
+  { void*         image;
+    unsigned long bytes;
+  };
 
-typedef struct
+struct Screen
+  { int x;
+    int y;
+    int w;
+    int h;
+  };
+
+struct ScreenList
   { unsigned char size;
-    Screen        list[1];
-  } ScreenList;
+    struct Screen list[1];
+  };
 
-ScreenList* ListScreens();
+struct ScreenList* ScreenList();
+struct Bitmap*     ScreenShot( int x , int y , int w , int h );
 
 BOOL ScreenCounter( HMONITOR hMonitor , HDC hDC , LPRECT pRect , LPARAM aSize );
 BOOL ScreenFetcher( HMONITOR hMonitor , HDC hDC , LPRECT pRect , LPARAM aScreenList );
