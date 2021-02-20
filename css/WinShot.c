@@ -1,68 +1,98 @@
-#include <stdio.h>
+#include <stdlib.h>
 #include <windows.h>
 #include "WinShot.h"
 
 ////////////////////////////////////////////////////////////////////////////////
 
-HBitmap* ScreenShot( int x, int y, int width, int height ) {
-  HBitmap*          result            = NULL;
+// get the list of detected screens
+struct ScreenList* ScreenList()
+{
+  unsigned char       count = 0;    // number of detected screens
+  struct ScreenList*  items = NULL; // list of detected screens
 
-  HDC               hScreen           = GetDC( NULL );
-  HDC               hScreenMemory     = CreateCompatibleDC( hScreen );
+  // run through detected screens increasing the 'count' of the list
+  EnumDisplayMonitors( NULL , NULL , ScreenCounter , (LPARAM) &count );
 
-  HBITMAP           hBitmap           = CreateCompatibleBitmap( hScreen, width, height );
-  HBITMAP           hBitmapOld        = SelectObject( hScreenMemory, hBitmap );
+  // return null if there are no available screens
+  if ( count == 0 ) return NULL;
 
-  BITMAPINFO*       pBitmapInfo       = ( BITMAPINFO* )       malloc( sizeof( BITMAPINFOHEADER ) );
-  BITMAPFILEHEADER* pBitmapFileHeader = ( BITMAPFILEHEADER* ) malloc( sizeof( BITMAPFILEHEADER ) );
+  // allocate enough memory to store all of the detected screens' data
+  items = malloc( sizeof(*items) + count * sizeof(struct Screen) );
 
-  BYTE*             pPixelBuffer      = NULL; // pixel buffer
-  BYTE*             pBitmapBuffer     = NULL; // full bitmap file buffer
+  // return null if memory allocation fails for some reason
+  if ( items == NULL ) return NULL;
 
-  DWORD             nColors           = 0;    // number of items in the Color Table
+  // prepare the screen list size value for the 'ScreenFetcher' function
+  items->count = 0;
 
-  DWORD             sBitmapInfo       = sizeof( BITMAPINFOHEADER );
-  DWORD             sPixelBuffer      = 0;    // byte size of PIXEL buffer
-  DWORD             sBitmapFileHeader = sizeof( BITMAPFILEHEADER );
+  // load position and size of each monitor into the list
+  EnumDisplayMonitors( NULL , NULL , ScreenFetcher , (LPARAM) items );
 
-  //////////////////////////////////////////////////////////////////////////////
+  // return the pointer to the 'ScreenList'
+  return items;
+}
 
-  // copy pixels from "real" screen to "in memory" screen
-  BitBlt( hScreenMemory, 0, 0, width, height, hScreen, x, y, SRCCOPY );
+struct ScreenShot* ScreenShot( int x , int y , int w , int h )
+{
+  struct ScreenShot*  result           = NULL;
 
-  //////////////////////////////////////////////////////////////////////////////
+  HDC                 hScreen           = GetDC( NULL );
+  HDC                 hScreenMemory     = CreateCompatibleDC( hScreen );
 
-  // get BITMAPINFOHEADER data into BITMAPINFO structure
-  pBitmapInfo->bmiHeader.biSize = sizeof( BITMAPINFOHEADER );
+  HBITMAP             hBitmap           = CreateCompatibleBitmap( hScreen , w , h );
+  HBITMAP             hBitmapOld        = (HBITMAP) SelectObject( hScreenMemory , hBitmap );
+
+  DWORD               nColors           = 0;
+
+  DWORD               sBitmapInfo       = sizeof( BITMAPINFOHEADER );
+  DWORD               sPixelBuffer      = 0;    // byte size of PIXEL buffer
+  DWORD               sBitmapFileHeader = sizeof( BITMAPFILEHEADER );
+
+  BYTE*               pPixelBuffer      = NULL;
+  BYTE*               pBitmapBuffer     = NULL;
+
+  BITMAPINFO*         pBitmapInfo       = malloc( sBitmapInfo );
+  BITMAPFILEHEADER*   pBitmapFileHeader = malloc( sBitmapFileHeader );
+
+  //--------------------------------------------------------------------------//
+
+  BitBlt( hScreenMemory , 0 , 0 , w , h , hScreen , x , y , SRCCOPY );
+
+  //--------------------------------------------------------------------------//
+
+  // return null if the allocation for pBitmapInfo and pBitmapFileHeader failed
+  if( ( pBitmapInfo == NULL ) || ( pBitmapFileHeader == NULL ) )
+    goto EXIT01;
+
+  // store the BITMAPINFOHEADER data into the BITMAPINFO structure
+  pBitmapInfo->bmiHeader.biSize = sBitmapInfo;
   if( !GetDIBits( hScreenMemory, hBitmap, 0, 0, NULL, pBitmapInfo, DIB_RGB_COLORS ) )
-    goto FailExit01;
+    goto EXIT01;
 
-  // calculate number of additional bytes to allocate for Color Table
+  // calculate the number of additional bytes to allocate for the Color Table
   nColors       = ColorTableSize( &pBitmapInfo->bmiHeader );
   sPixelBuffer  = pBitmapInfo->bmiHeader.biSizeImage;
 
-  // calculate size of BITMAPINFO data structure
+  // calculate the size of BITMAPINFO data structure
   if ( nColors > 0 )
-    sBitmapInfo = sizeof( BITMAPINFOHEADER ) + sizeof( RGBQUAD ) * nColors;
+    sBitmapInfo = sBitmapInfo + sizeof( RGBQUAD ) * nColors;
 
-  // reallocate BITMAPINFO data structure in case there is a Color Table
+  // reallocate the BITMAPINFO data structure in case there is a Color Table
   if ( nColors > 0 )
     pBitmapInfo = realloc( pBitmapInfo, sBitmapInfo );
 
   // return null if reallocation failed for some reason
   if ( pBitmapInfo == NULL )
-    goto FailExit01;
+    goto EXIT01;
 
   // allocate enough bytes for storing pixels
   pPixelBuffer = malloc( sPixelBuffer );
-
-  // return null if allocation failed
   if ( pPixelBuffer == NULL )
-    goto FailExit01;
+    goto EXIT01;
 
   // get full BITMAPINFO structure this time and return NULL if it fails
-  if( !GetDIBits( hScreenMemory, hBitmap, 0, pBitmapInfo->bmiHeader.biHeight, pPixelBuffer, pBitmapInfo, DIB_RGB_COLORS ) )
-    goto FailExit02;
+  if( !GetDIBits( hScreenMemory , hBitmap , 0 , pBitmapInfo->bmiHeader.biHeight , pPixelBuffer , pBitmapInfo , DIB_RGB_COLORS ) )
+    goto EXIT02;
 
   // initialize the BITMAPFILEHEADER
   pBitmapFileHeader->bfType      = 0x4D42; // 0x4D B, 0x42 M : BM ( BitMap )
@@ -71,53 +101,88 @@ HBitmap* ScreenShot( int x, int y, int width, int height ) {
   pBitmapFileHeader->bfReserved2 = 0;
   pBitmapFileHeader->bfOffBits   = sBitmapFileHeader + sBitmapInfo;
 
-  // allocate enough space to keep complete BMP file in memory
+  // allocate enough space to keep the complete BMP file in memory
   pBitmapBuffer = malloc( sBitmapFileHeader + sBitmapInfo + sPixelBuffer );
-
-  // return NULL if allocation failed
   if ( pBitmapBuffer == NULL )
-    goto FailExit02;
+    goto EXIT02;
 
   // copy BITMAPFILEHEADER into the bitmap buffer
-  memcpy( pBitmapBuffer                                   , pBitmapFileHeader , sBitmapFileHeader );
+  memcpy( pBitmapBuffer , pBitmapFileHeader , sBitmapFileHeader );
   // copy BITMAPINFO into the bitmap buffer
-  memcpy( pBitmapBuffer + sBitmapFileHeader               , pBitmapInfo       , sBitmapInfo       );
+  memcpy( pBitmapBuffer + sBitmapFileHeader , pBitmapInfo , sBitmapInfo );
   // copy PIXELS into the bitmap buffer
-  memcpy( pBitmapBuffer + sBitmapFileHeader + sBitmapInfo , pPixelBuffer      , sPixelBuffer      );
+  memcpy( pBitmapBuffer + sBitmapFileHeader + sBitmapInfo , pPixelBuffer , sPixelBuffer );
 
   // allocate enough memory for BMP structure
-  result = malloc( sizeof( HBitmap ) );
-
-  // return NULL if allocation fails
-  // and clean up successfully allocated bitmap buffer ( such a shame )
+  result = malloc( sizeof( *result ) );
   if ( result == NULL )
-    goto FailExit03;
+    goto EXIT03;
 
-  // insert data into resulting HBitmap structure
+  // insert data into resulting ScreenShot structure
   result->image = pBitmapBuffer;
   result->bytes = sBitmapFileHeader + sBitmapInfo + sPixelBuffer;
 
-  // return result
   goto DONE;
 
-  // memory cleanup (we have to be good peoples :)
-  FailExit03:
+  // memory cleanup
+  EXIT03:
     free( pBitmapBuffer );
   DONE:
-  FailExit02:
+  EXIT02:
     free( pPixelBuffer );
-  FailExit01:
+  EXIT01:
     free( pBitmapInfo );
     free( pBitmapFileHeader );
     DeleteDC( hScreenMemory );
     ReleaseDC( NULL, hScreen );
     DeleteObject( hBitmapOld );
 
-  // return the HBitmap
+  // return the pointer to the resulting ScreenShot
   return result;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+
+void FreeScreenList( struct ScreenList* screenList )
+{
+  free( screenList );
+}
+
+void FreeScreenShot( struct ScreenShot* screenShot )
+{
+  free( screenShot->image );
+  free( screenShot );
+}
+
+// increase the value on 'aSize' address
+BOOL ScreenCounter( HMONITOR hMonitor, HDC hDC, LPRECT pRect, LPARAM aSize )
+{
+  int* pSize = (int*) aSize;  // cast the address into a pointer
+  (*pSize)++;                 // increase size through a pointer
+  return TRUE;                // continue iterating over screens
+}
+
+// fetch width , height and position of a virtual screen
+BOOL ScreenFetcher( HMONITOR hMonitor , HDC hDC , LPRECT pRect , LPARAM aScreenList )
+{
+  struct ScreenList* list = (struct ScreenList*) aScreenList; // cast the address into a pointer
+  int                indx = list->count;                      // get the current index / size
+
+  MONITORINFO info;                              // monitor info temp var
+              info.cbSize = sizeof(MONITORINFO); // needed for G...M...InfoA
+
+  // get the screen info
+  GetMonitorInfoA( hMonitor , &info );
+
+  // store relevant screen info into the list at index 'indx'
+  list->items[indx].x = (int) info.rcMonitor.left;
+  list->items[indx].y = (int) info.rcMonitor.top;
+  list->items[indx].w = (int) abs( info.rcMonitor.left - info.rcMonitor.right  );
+  list->items[indx].h = (int) abs( info.rcMonitor.top  - info.rcMonitor.bottom );
+
+  list->count++; // increase the list index / count
+  return TRUE;   // continue iterating over screens
+}
 
 /*
   This might be a complete mess, or it might work perfectly, I'm not sure. It
@@ -152,60 +217,4 @@ DWORD ColorTableSize( BITMAPINFOHEADER* h ) {
   }
 
   return result;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-
-HScreenList* EnumScreens() {
-  int           cnt  = 0;     // number of detected screens
-  HScreenList*  list = NULL;  // list of detected screens
-
-  // get number of detected screens so we can allocate enough memory for a list
-  EnumDisplayMonitors( NULL, NULL, ScreenCounter, (LPARAM) &cnt );
-
-  // allocate enough memory to store screen info for every detected screen
-  list = (HScreenList*) malloc( sizeof( int ) + cnt * sizeof( HScreen ) );
-
-  // return null if memory allocation fails
-  if ( list == NULL ) return NULL;
-
-  // initialize the counter for ScreenInformer
-  list->cnt = 0;
-
-  // get position and size of each monitor into list
-  EnumDisplayMonitors( NULL, NULL, ScreenInformer, (LPARAM) list );
-
-  // return the pointer containing a list of detected screens
-  return list;
-}
-
-BOOL ScreenCounter( HMONITOR hMonitor, HDC hDC, LPRECT pRect, LPARAM pCnt ) {
-  int* pCounter = (int*) pCnt;  // cast the caster pointer
-  (*pCounter)++;                // increase the counter value
-
-  // continue iterating over screens
-  return TRUE;
-}
-
-BOOL ScreenInformer( HMONITOR hMonitor, HDC hDC, LPRECT pRect, LPARAM pHScreenList ) {
-  HScreenList*  list = (HScreenList*) pHScreenList; // cast to HScreenList
-  int           cnt  = list->cnt;                   // get current index
-
-  MONITORINFO info;
-              info.cbSize = sizeof( MONITORINFO ); // needed for G...M...InfoA
-
-  // get the screen info
-  GetMonitorInfoA( hMonitor, &info );
-
-  // store relevant screen info into the list
-  list->screens[cnt].vsx = info.rcMonitor.left;
-  list->screens[cnt].vsy = info.rcMonitor.top;
-  list->screens[cnt].vsw = abs( info.rcMonitor.left - info.rcMonitor.right );
-  list->screens[cnt].vsh = abs( info.rcMonitor.top  - info.rcMonitor.bottom );
-
-  // increase the index
-  list->cnt++;
-
-  // continue iterating over screens
-  return TRUE;
 }
