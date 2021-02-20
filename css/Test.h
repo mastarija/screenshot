@@ -13,12 +13,13 @@ struct Screen
   };
 
 struct ScreenList
-  { unsigned char size;
-    struct Screen list[1];
+  { unsigned char count;
+    struct Screen items[];
   };
 
 struct ScreenList* ScreenList();
 struct Bitmap*     ScreenShot( int x , int y , int w , int h );
 
-BOOL ScreenCounter( HMONITOR hMonitor , HDC hDC , LPRECT pRect , LPARAM aSize );
-BOOL ScreenFetcher( HMONITOR hMonitor , HDC hDC , LPRECT pRect , LPARAM aScreenList );
+BOOL  ScreenCounter( HMONITOR hMonitor , HDC hDC , LPRECT pRect , LPARAM aSize );
+BOOL  ScreenFetcher( HMONITOR hMonitor , HDC hDC , LPRECT pRect , LPARAM aScreenList );
+DWORD ColorTableSize( BITMAPINFOHEADER* h );
