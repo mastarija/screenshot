@@ -1,4 +1,4 @@
-packages    : screenshot.cabal
+packages          : screenshot.cabal
 
-constraints : base        >= 4.13 && < 4.14
-            , bytestring  >= 0.11 && < 0.12
+constraints       : base        >= 4.13 && < 4.14
+                  , bytestring  >= 0.11 && < 0.12
