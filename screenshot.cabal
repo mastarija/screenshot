@@ -31,7 +31,6 @@ common core
 
   ghc-options       : -Wall
   build-depends     : base
-                    , bytestring
   default-language  : Haskell2010
 
   build-tool-depends: hsc2hs:hsc2hs >= 0.68.7 && < 0.68.8
@@ -40,5 +39,5 @@ library
   import            : core
   hs-source-dirs    : lib
   exposed-modules   : Graphics.ScreenShot
-  other-modules     : Graphics.ScreenShot.Domain
-                    , Graphics.ScreenShot.WinShot
+# other-modules     : Graphics.ScreenShot.Domain
+#                   , Graphics.ScreenShot.WinShot
