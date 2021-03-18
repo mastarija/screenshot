@@ -25,7 +25,7 @@ source-repository head
   location          : https://github.com/mastarija/screenshot
 
 common core
-  includes          : css/WinShot.h
+  includes          : WinShot.h
   c-sources         : css/WinShot.c
   include-dirs      : css
 
@@ -40,4 +40,5 @@ library
   import            : core
   hs-source-dirs    : lib
   exposed-modules   : Graphics.ScreenShot
-  other-modules     : Graphics.ScreenShot.WinShot
+  other-modules     : Graphics.ScreenShot.Domain
+                    , Graphics.ScreenShot.WinShot
