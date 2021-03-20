@@ -3,22 +3,28 @@
 
 void PrintScreen( Screen s )
 {
-  printf( "marker : %d\n" , s.marker );
-  printf( "marker.bounds.x : %d\n" , s.bounds.x );
-  printf( "marker.bounds.y : %d\n" , s.bounds.y );
-  printf( "marker.bounds.w : %d\n" , s.bounds.w );
-  printf( "marker.bounds.h : %d\n" , s.bounds.h );
+  printf( "screen.x : %d\n" , s.x );
+  printf( "screen.y : %d\n" , s.y );
+  printf( "screen.w : %d\n" , s.w );
+  printf( "screen.h : %d\n" , s.h );
 }
 
 int main ()
 {
   ScreenList* list = ss_ScreenList();
 
-  // printf( "Hello world! %d" , list->size );
+  if ( !list )
+  {
+    return 1;
+  }
 
   Screen* data = ( Screen* ) list->data;
 
-  PrintScreen( data[0] );
+  for ( int i = 0; i < list->size; i++ )
+  {
+    PrintScreen( data[ i ] );
+    printf( "\n" );
+  }
 
   return 0;
 }

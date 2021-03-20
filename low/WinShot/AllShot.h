@@ -9,13 +9,7 @@ typedef struct
   long y;
   unsigned long w;
   unsigned long h;
-} Bounds;
-
-typedef struct
-{
-  unsigned char marker;
-  Bounds        bounds;
-} Screen;
+} Screen ;
 
 typedef struct
 {
@@ -30,6 +24,6 @@ typedef struct
 } ScreenShot;
 
 ScreenList* ss_ScreenList ();
-ScreenShot* ss_ScreenShot ( Screen screen , Bounds bounds );
+ScreenShot* ss_ScreenShot ( Screen screen );
 
 #endif
