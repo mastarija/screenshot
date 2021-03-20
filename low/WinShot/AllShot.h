@@ -1,27 +1,35 @@
+#include <stdlib.h>
+
 #ifndef ALL_SHOT
 #define ALL_SHOT
 
-struct Screen
+typedef struct
 {
-  int x;
-  int y;
-  int w;
-  int h;
-};
+  long x;
+  long y;
+  unsigned long w;
+  unsigned long h;
+} Bounds;
 
-struct ScreenShot
+typedef struct
 {
-  int size;
-  int bits;
-};
+  unsigned char marker;
+  Bounds        bounds;
+} Screen;
 
-struct ScreenList
+typedef struct
 {
-  int size;
-  int list;
-};
+  size_t size;
+  Screen data[];
+} ScreenList;
 
-struct ScreenList ScreenList ();
-struct ScreenShot ScreenShot ( struct Screen screen );
+typedef struct
+{
+  size_t        size;
+  unsigned char data[];
+} ScreenShot;
+
+ScreenList* ss_ScreenList ();
+ScreenShot* ss_ScreenShot ( Screen screen , Bounds bounds );
 
 #endif
