@@ -22,8 +22,19 @@ int main ()
 
   for ( int i = 0; i < list->size; i++ )
   {
+    char name[] = "Test0.bmp";
+         name[ 4 ] = i + '0';
+
     PrintScreen( data[ i ] );
     printf( "\n" );
+
+    ScreenShot* screenShot = ss_ScreenShot( data[ i ] );
+
+    FILE* handle = fopen( name , "wb" );
+
+    fwrite( screenShot->data , screenShot->size , 1 , handle );
+
+    fclose( handle );
   }
 
   return 0;
